@@ -1,0 +1,320 @@
+---
+title: "Prediction for 12 session"
+author: "Prakash Paudyal"
+date: "6/14/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,include=FALSE}
+library(caret)
+set.seed(702)
+known.dat<-read.csv("known.csv",header = TRUE)[,-c(1,3,4)]
+trainIndx<-createDataPartition(known.dat$subject,p=0.7,list=FALSE)
+train.dat<-known.dat[trainIndx,]
+test.dat<-known.dat[-trainIndx,]
+```
+
+# Random Forest
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,include=FALSE}
+library(knitr)
+library(randomForest)
+set.seed(702)
+rf.model<-randomForest(subject~.,data = train.dat, ntree=500, importance=TRUE)
+rf.pred.train<-predict(rf.model,newdata=train.dat)
+rf.train.acc<-mean(rf.pred.train==train.dat$subject)
+#rf.train.acc
+#test error
+rf.pred.test<-predict(rf.model,newdata=test.dat)
+rf.test.acc<-mean(rf.pred.test==test.dat$subject)
+#rf.test.acc
+#importance(rf.model)
+#varImpPlot(rf.model)
+```
+
+
+#12 session
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+sessionn1 <- read.csv("q.session.1.csv",header = TRUE)
+sessionn2 <- read.csv('q.session.2.csv',header = TRUE)
+sessionn3 <- read.csv('q.session.3.csv',header = TRUE)
+sessionn4<- read.csv('q.session.4.csv',header = TRUE)
+sessionn5 <- read.csv('q.session.5.csv',header = TRUE)
+sessionn6 <- read.csv('q.session.6.csv',header = TRUE)
+sessionn7 <- read.csv('q.session.7.csv',header = TRUE)
+sessionn8 <- read.csv('q.session.8.csv',header = TRUE)
+sessionn9 <- read.csv('q.session.9.csv',header = TRUE)
+sessionn10 <- read.csv('q.session.10.csv',header = TRUE)
+sessionn11 <- read.csv('q.session.11.csv',header = TRUE)
+sessionn12 <- read.csv('q.session.12.csv',header = TRUE)
+
+```
+
+# Prediction
+
+# session1
+
+subject s002 is predicted 3 times out of 9 time .The accuracy is 33.3%
+Table1 for number of times each subject predicted is given below:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+rf.pred.ses1<-table(predict(rf.model,newdata=sessionn1))
+which.max(rf.pred.ses1)
+#s002
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ses1.pred = table(predict(rf.model, sessionn1))
+tab1 = data.frame(cbind(ses1.pred))
+colnames(tab1)= "Predicted"
+tab1
+accuracy1 = 3/sum(diag(ses1.pred))
+accuracy1
+```
+
+
+#session2
+
+In session 2 subject s008 was predicted .The accuracy is 50%
+Table for number of times each subject predicted is given below:
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+rf.pred.ses2<-table(predict(rf.model,newdata=sessionn2))
+which.max(rf.pred.ses2)
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ses2.pred = table(predict(rf.model, sessionn2))
+tab2 = data.frame(cbind(ses2.pred))
+colnames(tab2)= "Predicted"
+tab2
+accuracy1 = 3/sum(diag(ses2.pred))
+accuracy1
+```
+
+
+#session3
+
+In session 3 subject s020 was predicted .The accuracy is 70%
+Table for number of times each subject predicted is given below:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+rf.pred.ses3<-table(predict(rf.model,newdata=sessionn3))
+which.max(rf.pred.ses3)
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ses3.pred = table(predict(rf.model, sessionn3))
+tab3 = data.frame(cbind(ses3.pred))
+colnames(tab3)= "Predicted"
+tab3
+accuracy3 = 7/sum(diag(ses3.pred))
+accuracy3
+```
+
+
+# session 4
+
+In session 4 subject s024 was predicted .The accuracy is 93.75%
+Table for number of times each subject predicted is given below:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+rf.pred.ses4<-table(predict(rf.model,newdata=sessionn4))
+which.max(rf.pred.ses4)
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ses4.pred = table(predict(rf.model, sessionn4))
+tab4= data.frame(cbind(ses4.pred))
+colnames(tab4)= "Predicted"
+tab4
+accuracy4 = 15/sum(diag(ses4.pred))
+accuracy4
+```
+
+# session 5
+
+In session 5 subject s034 was predicted .The accuracy is 20%
+Table for number of times each subject predicted is given below:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+rf.pred.ses5<-table(predict(rf.model,newdata=sessionn5))
+which.max(rf.pred.ses5)
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ses5.pred = table(predict(rf.model, sessionn5))
+tab5= data.frame(cbind(ses5.pred))
+colnames(tab5)= "Predicted"
+tab5
+accuracy5 = 2/sum(diag(ses5.pred))
+accuracy5
+```
+
+
+# session 6
+
+In session 6 subject s036 was predicted .The accuracy is 100%
+Table for number of times each subject predicted is given below:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+rf.pred.ses6<-table(predict(rf.model,newdata=sessionn6))
+which.max(rf.pred.ses6)
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ses6.pred = table(predict(rf.model, sessionn6))
+tab6= data.frame(cbind(ses6.pred))
+colnames(tab6)= "Predicted"
+tab6
+accuracy6 = 8/sum(diag(ses6.pred))
+accuracy6
+```
+
+# session 7
+
+In session 7 subject s039 was predicted .The accuracy is 63%
+Table for number of times each subject predicted is given below:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+rf.pred.ses7<-table(predict(rf.model,newdata=sessionn7))
+which.max(rf.pred.ses7)
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ses7.pred = table(predict(rf.model, sessionn7))
+tab7= data.frame(cbind(ses7.pred))
+colnames(tab7)= "Predicted"
+tab7
+accuracy7 = 12/sum(diag(ses7.pred))
+accuracy7
+```
+
+# session 8
+
+In session 8 subject s042 was predicted .The accuracy is 80%
+Table for number of times each subject predicted is given below:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+rf.pred.ses8<-table(predict(rf.model,newdata=sessionn8))
+which.max(rf.pred.ses8)
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ses8.pred = table(predict(rf.model, sessionn8))
+tab8= data.frame(cbind(ses8.pred))
+colnames(tab8)= "Predicted"
+tab8
+accuracy8= 4/sum(diag(ses8.pred))
+accuracy8
+```
+
+# session 9
+
+In session 9 subject s026 was predicted .The accuracy is 33.33%
+Table for number of times each subject predicted is given below:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+rf.pred.ses9<-table(predict(rf.model,newdata=sessionn9))
+which.max(rf.pred.ses9)
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ses9.pred = table(predict(rf.model, sessionn9))
+tab9= data.frame(cbind(ses9.pred))
+colnames(tab9)= "Predicted"
+tab9
+accuracy9= 2/sum(diag(ses9.pred))
+accuracy9
+```
+
+# session 10
+
+In session 10 subject s022 was predicted .The accuracy is 71.42857%
+Table for number of times each subject predicted is given below:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+rf.pred.ses10<-table(predict(rf.model,newdata=sessionn10))
+which.max(rf.pred.ses10)
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ses10.pred = table(predict(rf.model, sessionn10))
+tab10= data.frame(cbind(ses10.pred))
+colnames(tab10)= "Predicted"
+tab10
+accuracy10= 5/sum(diag(ses10.pred))
+accuracy10
+```
+
+# session 11
+
+In session 11 subject s044 was predicted .The accuracy is 78%
+Table for number of times each subject predicted is given below:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+rf.pred.ses11<-table(predict(rf.model,newdata=sessionn11))
+which.max(rf.pred.ses11)
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ses11.pred = table(predict(rf.model, sessionn11))
+tab11= data.frame(cbind(ses11.pred))
+colnames(tab11)= "Predicted"
+tab11
+accuracy11= 39/sum(diag(ses11.pred))
+accuracy11
+```
+
+# Session 12
+
+In session 12 subject s048 was predicted .The accuracy is 25 %
+Table for number of times each subject predicted is given below:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+rf.pred.ses12<-table(predict(rf.model,newdata=sessionn12))
+which.max(rf.pred.ses12)
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ses12.pred = table(predict(rf.model, sessionn12))
+tab12= data.frame(cbind(ses12.pred))
+colnames(tab12)= "Predicted"
+tab12
+accuracy12= 7/sum(diag(ses12.pred))
+accuracy12
+```
+
+
+# Prediction Table
+
+```{r}
+library(knitr)
+sessionIndex<-c(1:12)
+predicted<-c("s002","s008","s020","s024" ,"s034","s036","s039","s042","s031","s022","s044","s048")
+Accuracy<-c(33.33333,50,70,93.75,20,100,15.78947,80,33.33333,71.42857,78,25)
+finltable<-data.frame(sessionIndex,predicted,Accuracy)
+#kable(finltable)
+Table1<-kable(finltable,caption = "Table for prediction Acuracy")
+Table1
+```

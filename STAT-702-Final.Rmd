@@ -1,0 +1,931 @@
+---
+title: "STAT-702-Final-Typing"
+author: "Prakash Paudyal"
+date: "5/14/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+# Introduction
+
+The dataset is a record of the time taken for typing the password of a specific system for 51 users.The system can be used by one user at a time and they have access to the password ".tie5Roanl".The data has record for two sessions where the user used the system. A session can
+be defined as a continious block of time where the user has to enter password multiple times. 
+These multiple entries are recorded as rep in the data set. There are two session names called  "sessionIndex 7" and "sessionIndex 8". While checking the data set, I found out that for some 
+users, information from both the sessions have been recorded, while for some only the information from "sessionIndex 8" has been been recorded.
+The data has a "subject" column, which represents the 51 users for that particular observation
+row and are named as "soo2", "s003 etc.
+There are 31 other columns in the data set which are the record of time taken for typing the keys 
+of the password. These 31 columns give the time taken to hit a key and the time interval between hiting two keys. Some of these variables have been explained below:
+1) H.period: The amount of time that the "." is held down.
+2) DD.period.t: The time between pressing down the "." key and pressing down the "t" key.
+3) UD.period.t: The time between the "." key coming up and pressing down the "t" key.
+Similarly, the  times for all the keys of the password ".tie5Roanl" are recorded.
+
+Our goal is to build  a classification model for known data where subject for each rows of observation is given and we need to predict the subjects for the 12 sessions of the unknown data.
+
+
+# Data Descriptive Statistics
+
+
+The known dataset has 35 Colums and 1776 Rows.Here subject is the target variable and the remaining are indepenndent feature variables.The column "x" is the index of the data.Two columns "sessionIndex" and "rep" provide information about when and how many times the users entered the password for the system. There are two sessions where the user used the system and entered password multiple times (which is represented by rep variables). By ploting frequncey count plot for each subject, we can 
+see that some users have participated in both the sesssions while some of them have participated in session 8 only. The number of times each subject entered the  password is  different e.g. subject "s011" entered the password 11 times and  subject "s026 enterd password 53 times.
+For session 8, all the 51 subjects used the system and entered the password 5 to 50 times.
+For session 7, only 22 subjects used the sytem and entered the password 1 to 25 times.
+
+
+```{r}
+library(knitr)
+library()
+known<-read.csv("known.csv",header = TRUE)[,-1]
+Table1<-kable(head(known))
+kable(head(known))
+#str(known)
+summary(known)
+#names(known)
+```
+
+
+
+## Frequency of subjects 
+
+
+```{r,fig.width=10,fig.height=5}
+library(ggplot2)
+#ggplot(known, aes(subject))+
+#geom_bar(stat="count", width=0.5, fill="steelblue")+
+#geom_text(stat='count', aes(label=..count..), vjust=-1)
+# To change plot order of bars, change levels in underlying factor
+reorder_size <- function(x) {
+  factor(x, levels = names(sort(table(x))))
+}
+ggplot(known, aes(reorder_size(subject))) + geom_bar(stat="count",width=0.7, fill=rainbow(51))+theme_minimal()+ggtitle("Frequency of subjects") + 
+     theme(plot.title = element_text(face="bold"))+
+  geom_text(stat='count', aes(label=..count..), vjust=-1)
+
+```
+
+
+
+
+
+## Checking distribution of subjects in  each of two  session index
+
+```{r,fig.width=10,fig.height=5}
+library(knitr)
+#sub<-sort(table(known$subject))
+Table2 <- table(known$subject, known$sessionIndex)
+kable(head(Table2))
+#table(known$subject, known$sessionIndex)
+sess7<-subset(known,sessionIndex==7)
+sess8<-subset(known,sessionIndex==8)
+#sess7<-known[sessionIndex==7,]
+#sess8<-known[sessionIndex==8,]
+ggplot(sess7, aes(reorder_size(subject)))+
+geom_bar(stat="count", width=0.5, fill=rainbow(22))+
+geom_text(stat='count', aes(label=..count..), vjust=-1)+ggtitle("Frequency of subjects in sessionIndex 7 with 22 subject")
+
+ggplot(sess8, aes(reorder_size(subject)))+ geom_bar(stat="count", width=0.5, fill=rainbow(51))+
+geom_text(stat='count', aes(label=..count..), vjust=-1)+
+  ggtitle("Frequency of subjects in sessionIndex 8 with 51 subject")
+```
+
+
+# Exploratory data analysis and feature selection
+
+## Checking missing data 
+
+There is no missing data.
+
+```{r,message=FALSE}
+library(dplyr)
+sapply(known, function(x) sum(is.na(x)))
+```
+
+
+
+
+# Correlations:
+
+In statistics, the correlation coefficient r measures the strength and direction of a linear relationship between two variables on a scatterplot. The value of r is always between +1 and –1
+The correlations plot and tables shows us that DD. and UD. predictors are higly correlated.
+
+
+## Correlation Table
+
+Correlation table for  highly correlaated variables show very strong correlation between the DD and UD variables. 
+
+
+```{r}
+library(knitr)
+mosthighlycorrelated <- function(mydataframe,numtoreport)
+  {
+     # find the correlations
+     cormatrix <- cor(mydataframe)
+     # set the correlations on the diagonal or lower triangle to zero,
+     # so they will not be reported as the highest ones:
+     diag(cormatrix) <- 0
+     cormatrix[lower.tri(cormatrix)] <- 0
+     # flatten the matrix into a dataframe for easy sorting
+     fm <- as.data.frame(as.table(cormatrix))
+     # assign human-friendly names
+     names(fm) <- c("First.Variable", "Second.Variable","Correlation")
+     # sort and print the top n correlations
+     head(fm[order(abs(fm$Correlation),decreasing=T),],n=numtoreport)
+}
+#correlation table for highest 20 correlation pairs of variables.
+Table3<-kable(mosthighlycorrelated(known[4:34], 20),caption = "Correlation Table",digits = 6)
+Table3
+
+```
+
+
+## Correlation plot
+
+
+```{r,fig.width=10,fig.height=10}
+library(ggplot2)
+library(ggcorrplot)
+labdata<-known[,c(4:34)]
+#numeric.var <- sapply(labdata,is.numeric)
+#corr.matrix <- cor(labdata[,numeric.var])
+#corr.matrix <- cor_pmat(labdata)
+corr.matrix <- cor(labdata)
+ggcorrplot(corr.matrix,hc.order = TRUE, type = "lower",lab = TRUE, title = 'Correlation Matrix',tl.cex = 25,tl.srt = 45,show.legend = FALSE)
+```
+
+
+
+
+
+
+
+## Linear relationship between the variables-correlation
+
+Some of the variables  has linear relationship which indicate they are correleted.
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+p1<-ggplot(known, aes(x=DD.period.t, y=UD.period.t)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p2<-ggplot(known, aes(x=DD.t.i, y=UD.t.i)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p3<-ggplot(known, aes(x=DD.i.e, y=UD.i.e)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p4<-ggplot(known, aes(x=DD.e.five, y=UD.e.five)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p5<-ggplot(known, aes(x=DD.five.Shift.r, y=UD.five.Shift.r)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p6<-ggplot(known, aes(x=DD.Shift.r.o, y=UD.Shift.r.o)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p7<-ggplot(known, aes(x=DD.o.a, y=UD.o.a)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p8<-ggplot(known, aes(x=DD.a.n, y=UD.a.n)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p9<-ggplot(known, aes(x=DD.n.l, y=UD.n.l)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p10<-ggplot(known, aes(x=DD.l.Return, y=UD.l.Return)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+
+p11<-ggplot(known, aes(x=H.t, y=H.e)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p12<-ggplot(known, aes(x=H.period, y=H.o)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p13<-ggplot(known, aes(x=H.i, y=H.o)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p14<-ggplot(known, aes(x=H.Shift.r, y=H.t)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+###other
+p15<-ggplot(known, aes(x=H.t, y=H.period)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p16<-ggplot(known, aes(x=H.five, y=H.Shift.r)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p17<-ggplot(known, aes(x=H.t, y=H.period)) + geom_point(shape=21,colour=3)+
+  ggtitle("Scatter Plot of two variables")
+p1
+p2
+#grid.arrange(p6, p7, p8,p9,p10, ncol=2)
+#grid.arrange(p11,p12,p13,p14, ncol=2)
+#grid.arrange(p15,p16,p17,ncol=2)
+
+```
+
+
+## Box plot subject vs all predictor
+
+
+The following figure  shows the box plot between H predictors and all 51 classes. It can be clearly seen that the predictors are seperable in each class. Hence, in early stage of data exploration I noticed thAT these predictors would play significant role in the development of classifiers.
+ut for DD and UD some of them are ovelaping and some are not overlaping hence we still can say
+there is difference among the 51 variables.
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+
+for(i in 4:7){
+library(ggplot2)
+print(ggplot(known, aes(x=subject, y=known[,i],color=subject)) +geom_boxplot()+theme(axis.title.x=element_text(face="bold",size = 7),axis.text.x = element_text(angle = 45,vjust =0.6,size=6),legend.position = "none")+labs(x = "Subject",y = names(known)[i])+theme(axis.title.y = element_text(face="bold",size = 6,vjust = 0.5)))
+}
+
+```
+
+
+
+
+
+
+
+## Density Plot for Hold time to compare the  subject
+
+
+Since Hold time looks better predictor among other predictor hence I decided to plot density plot
+for Hold time to compare the subjects.To build the good classifier we need to know what variables give the correct information about subjects.I ploted  density plot for Hold time  with subjects to check weather the Hold time is different for subject or not .
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center',fig.width=10,fig.height=5}
+#subseting known data for some users to compare their tyiping speed
+
+known.hc<-known[(known$subject %in% c("s002", "s003", "s004","s018")), ]
+
+#compairing the difference in  holding the key for 4 user 
+#.tie5Roanl
+ps1<-ggplot(known.hc,aes(x=H.period,group=subject,fill=subject))+
+  geom_histogram(position="identity",bins=20)+geom_density(alpha=0.3)+
+labs(xlab="Hold time for period ", ylab="Frequency count",
+     title="Comparing H.period distribution for user s002,s003,s004,s018")
+ps1
+ps2<-ggplot(known.hc,aes(x=H.t,fill=subject))+geom_histogram(position="identity",bins=20)+geom_density(alpha=0.3)+labs(xlab="Hold time of t ", ylab="Frequency count", title="Comparing H.t distribution for user s002,s003,s004,s018")
+ps3<-ggplot(known.hc,aes(x=H.i,fill=subject))+geom_histogram(position="identity",bins=20)+geom_density(alpha=0.3)+labs(xlab="Hold time of i ", ylab="Frequency count", title="Comparing H.i distribution for user s002,s003,s004,s018")
+ps4<-ggplot(known.hc,aes(x=H.e,fill=subject))+geom_histogram(position="identity",bins=20)+geom_density(alpha=0.3)+labs(xlab="Hold time of e ", ylab="Frequency count", title="Comparing H.e distribution for user s002,s003,s004,s018")
+ps5<-ggplot(known.hc,aes(x=H.five,fill=subject))+geom_histogram(position="identity",bins=20)+geom_density(alpha=0.3)+labs(xlab="Hold time of five ", ylab="Frequency count", title="Comparing H.five distribution for user s002,s003,s004,s018")
+ps6<-ggplot(known.hc,aes(x=H.Shift.r,fill=subject))+
+  geom_histogram(position="identity",bins=20)+geom_density(alpha=0.3)+
+labs(xlab="Hold time for R ", ylab="Frequency count",
+       title="Comparing H.Shift.r distribution for user s002,s003,s004,s018")
+ps7<-ggplot(known.hc,aes(x=H.o,fill=subject))+
+  geom_histogram(position="identity",bins=20)+geom_density(alpha=0.3)+
+labs(xlab="Hold time of o", ylab="Frequency count",
+       title="Comparing H.o distribution for user s002,s003,s004,s018")
+ps8<-ggplot(known.hc,aes(x=H.a,fill=subject))+
+  geom_histogram(position="identity",bins=20)+geom_density(alpha=0.3)+
+labs(xlab="Hold time of a", ylab="Frequency count",
+       title="Comparing H.a distribution for user s002,s003,s004,s018")
+ps9<-ggplot(known.hc,aes(x=H.n,fill=subject))+
+  geom_histogram(position="identity",bins=20)+geom_density(alpha=0.3)+
+labs(xlab="Hold time of n", ylab="Frequency count",
+       title="Comparing H.n distribution for user s002,s003,s004,s018")
+ps10<-ggplot(known.hc,aes(x=H.l,fill=subject))+
+  geom_histogram(position="identity",bins=20)+geom_density(alpha=0.3)+
+labs(xlab="Hold time of l", ylab="Frequency count",
+       title="Comparing H.l distribution for user s002,s003,s004,s018")
+#grid.arrange(ps1,ps2,ps3,ps4, ncol=2)
+#grid.arrange(ps5,ps6,ps7,ps8, ncol=2)
+#grid.arrange(ps9,ps10, ncol=2)
+
+ps1DD<-ggplot(known.hc,aes(DD.period.t,group=subject,fill=subject))+
+  geom_histogram(position="identity",bins=20)+geom_density(alpha=0.3)+
+labs(xlab="Hold time for period ", ylab="Frequency count",
+     title="Comparing DD.period distribution for user s002,s003,s004,s018")
+ps1UD<-ggplot(known.hc,aes(UD.period.t,group=subject,fill=subject))+
+  geom_histogram(position="identity",bins=20)+geom_density(alpha=0.3)+
+labs(xlab="Hold time for period ", ylab="Frequency count",
+     title="Comparing UD.period distribution for user s002,s003,s004,s018")
+#grid.arrange(ps1DD,ps1UD, ncol=2)
+
+```
+
+
+
+
+
+
+# Creating Training  and Test dataset
+
+I used different methods to split data inorder to make sure   good proportion of subject and session 
+in each training and test data. I  used sample() and creatPartition()  function from r package.
+The Sample of traing data set is 70% and remaining 30 % is test data.
+
+
+```{r,include=FALSE}
+set.seed(123)
+known<-read.csv("known.csv",header = TRUE)[,-1]
+smp_size <- floor(0.70 * nrow(known))
+train_ind <- sample(seq_len(nrow(known)), size = smp_size)
+train <- known[train_ind, ]
+test <- known[-train_ind, ]
+
+```
+
+## count the each subject  in train and test data
+
+```{r,include=FALSE}
+table(known$subject)
+table(train$subject)
+table(test$subject)
+
+trn8= train[train$sessionIndex==8,c(-2,-3)]
+tst8= test[test$sessionIndex==8,c(-2,-3)]
+
+trn7= train[train$sessionIndex==7,c(-2,-3)]
+tst7= test[test$sessionIndex==7,c(-2,-3)]
+#checking by sessionIdex
+table(trn8$subject)
+table(trn7$subject)
+
+table(tst8$subject)
+table(tst7$subject)
+
+```
+
+
+```{r,message=FALSE}
+set.seed(123)
+known<-read.csv("known.csv",header = TRUE)[,-1]
+library(caret)
+intrain<-createDataPartition(known$subject,p=0.7,list=FALSE)
+train<-known[intrain,]
+test<-known[-intrain,]
+```
+
+
+## count the each subject  in train and test data
+
+```{r}
+table(known$subject)
+table(train$subject)
+table(test$subject)
+
+trn8= train[train$sessionIndex==8,c(-2,-3)]
+tst8= test[test$sessionIndex==8,c(-2,-3)]
+
+trn7= train[train$sessionIndex==7,c(-2,-3)]
+tst7= test[test$sessionIndex==7,c(-2,-3)]
+#checking by sessionIdex
+table(trn8$subject)
+table(trn7$subject)
+
+table(tst8$subject)
+table(tst7$subject)
+
+```
+
+
+
+# Models
+
+
+## 1: Multinomial logistics regression
+
+
+Multinomial logistic regression is used to model nomial outcome variables,in which the log odds of the outcomes are modeled as a linear combination of the predictor variables.Multinomial regression report the odds of being in  the different outcome catogories in reference to some base group.
+Multiple regression model, for k possible outcomes, runnning k-1 independent binary logistic regression,in which one outcome is chossen as a pivot and then k-1 outcome are seperatly regressed 
+against the pivot outcome.
+Here, I build model with  H vairiables and combination of the H and UD variables.I used validation set approach  and 5-fold cross validation approach to select the model. Then I calculated the model accuracy for both approachs.The accuracy table is given below.
+
+
+
+```{r,message=FALSE,include=FALSE}
+##VSA
+library(MASS)
+library(nnet)
+set.seed(702)
+#model1 <- multinom(subject ~ H.period + H.t+ H.i+H.e+H.five+H.Shift.r+H.o+H.a+H.n+H.l+H.Return, data = train)
+model1 = multinom(subject ~ H.period + UD.period.t + H.t + UD.t.i + H.i + UD.i.e + H.e + UD.e.five + H.five + UD.five.Shift.r + H.Shift.r + UD.Shift.r.o + H.o + UD.o.a + H.a + UD.a.n + H.n + UD.n.l + H.l + UD.l.Return + H.Return , data = train,trace=T,MaxNWts=1500)
+#summary(model1)
+#head(train)
+predict(model1,train[c(1,2),],type = "prob")
+```
+
+
+```{r}
+##VSA Prediction Train Error
+set.seed(123)
+multi.pred <- predict(model1, newdata = train)
+### Create a confusion matrix and then a table with correct and incorrect proportions. ###
+#t1 <- table(multi.pred, train$subject)
+cm.ml.tr <- cbind(table(multi.pred, train$subject))
+multinom.train.err <- round(mean(multi.pred==train$subject),6)
+#multinom.train.err 
+```
+
+
+```{r}
+##VSA Prediction Test Error
+
+multi.test.pred <- predict(model1, newdata = test)
+### Create a confusion matrix and then a table with correct and incorrect proportions. ###
+#t2 <- table(multi.test.pred, test$subject)
+cm.ml.tst <- cbind(table(multi.test.pred,test$subject))
+multinom.test.err <- round(mean(multi.test.pred==test$subject),6)
+#multinom.test.err
+```
+
+
+```{r,include=FALSE}
+##5-fold cross validation method
+
+set.seed(12)
+#5-fold split
+folds <- split(1:dim(known)[1], sample(1:dim(known)[1], 5, replace=F))
+#Put the for loop together for 5 folds
+errs <- rep(0,5)
+for(i in 1:5)
+  {
+# Multinomial logistics regression to training data.
+#multinom1 <- multinom(subject ~ H.period + H.t + H.i + H.e + H.five + H.Shift.r + H.o +H.a + H.n + H.l + H.Return, data = known[-folds[[i]],]) 
+model11 = multinom(subject ~ H.period + UD.period.t + H.t + UD.t.i + H.i + UD.i.e + H.e + UD.e.five + H.five + UD.five.Shift.r + H.Shift.r + UD.Shift.r.o + H.o + UD.o.a + H.a + UD.a.n + H.n + UD.n.l + H.l + UD.l.Return + H.Return , data = known[-folds[[i]],],trace=T,MaxNWts=1500)
+#Prediction 
+pred.5fold <- predict(model11 , newdata = known[folds[[i]],])
+#Errors
+errs[i] <- mean(pred.5fold == known[folds[[i]],]$subject)
+}
+#5 fold CV accuracy
+multi.fold.errr <- round(mean(errs),6)
+#multi.fold.errr
+```
+
+
+#  Table 1:Accuracy Table for Multinomial Model
+
+Acuracy table shows that multinomial predict  rate is good  with training data but there is alot 
+variance for test data .Test accuracy rate is decreased by 17% from the train error rate which is
+98%. 5-fold corss validation slightly improved the error rate to 84.57%.
+subject wise accuracy  table and  plot are given below. Plot showes that prediction for 15 subjects
+(s004,s011,s017 ets )  are 100% acurate. some subject were poorly predicted (s034,s002,s029 etc)
+Around 66% of subject has prediction acuracy above 80%.
+
+
+
+```{r,echo=FALSE}
+library(knitr)
+Model <- c("Multinomial")
+Data <- c("Train","Test","5-fold")
+Accuracy <- c(multinom.train.err, multinom.test.err, multi.fold.errr)
+table.mul <- as.data.frame(cbind(Model,Data,Accuracy))
+kable(table.mul, digits = 6)
+```
+
+
+
+
+# Acuracy of Multinomial regression on  test Data for each subject.
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,include=FALSE}
+library(knitr)
+library(kableExtra)
+#table by subject 
+test.subject <- as.data.frame(table(test$subject))
+colnames(test.subject) <- c('subject','repetitions')
+subject.acc <- data.frame(cbind(Actual=test.subject$repetitions,Predicted=diag(cm.ml.tst)))
+subject.acc$Accuracy<-subject.acc$Predicted/subject.acc$Actual*100
+#colnames(subject.acc)<-c("subject","Actual","Predicted","Acuracy%")
+ndata<-subject.acc
+table.mlpc <- ndata[order(ndata$Accuracy,decreasing=TRUE),] 
+#kable(subject.acc, align="r")
+kable(table.mlpc, align="r")
+
+```
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+#table by subject 
+test.subject <- as.data.frame(table(test$subject))
+colnames(test.subject) <- c('subject','Actual')
+#get the data from confusion matrix
+a<-data.frame(diag(cm.ml.tst))
+b<-a$diag.cm.ml.tst.
+test.subject$Predicted<-b
+test.subject$Accuracy<-test.subject$Predicted/test.subject$Actual*100
+ndata<-test.subject
+#order the data
+table.mlpc <- ndata[order(ndata$Accuracy,decreasing=TRUE),] 
+#newdata
+Table11<-kable(table.mlpc, align="r",caption = "Table11:MUltinom")
+kable(head(table.mlpc,10))
+psa1<-ggplot(table.mlpc, aes(x=reorder(subject,Accuracy), y=Accuracy)) + geom_point(shape=21,colour=3)+
+  ggtitle("Plot of subject vs Accuracy for Multinomial ")+theme(axis.text.x  =  element_text(angle=45, vjust=0.5, size=6))
+psa1
+
+```
+
+
+
+
+
+
+# 2:Linear Discriminant Analysis (LDA)
+
+
+Linear Discriminant Analysis  find the linear combination of original variables that provide the best possible seperation between the group.The besic purpose is to estimate relationship between a single 
+categorical dependent variable and a set of quantitative independent variables. Here I used Lda() from Mass Package  to perform this analysis using the H and UD Predictors.
+
+
+
+```{r}
+##Validation set Approach-lda
+library(MASS)
+set.seed(101)
+#lda model for train data
+model.lda = lda(subject ~ H.period + UD.period.t + H.t + UD.t.i + H.i + UD.i.e + H.e + UD.e.five + H.five + UD.five.Shift.r + H.Shift.r + UD.Shift.r.o + H.o + UD.o.a + H.a + UD.a.n + H.n + UD.n.l + H.l + UD.l.Return + H.Return , data = train)
+#predict for train data
+lda.train.predict <- predict(model.lda, train)
+con.table <- cbind(table(lda.train.predict$class,train$subject))
+write.csv(con.table,'Train Confusion matrix of LDA.csv')
+#predict for test data
+lda.test.predict <- predict(model.lda, test)
+conf.table <- cbind(table(lda.test.predict$class,test$subject))
+write.csv(conf.table,'Test Confusion matrix of LDA.csv')
+#train acuracy
+lda.train.acc <-  mean(lda.train.predict$class == train$subject)
+#lda.train.acc
+#test acuracy
+lda.test.acc <-  mean(lda.test.predict$class == test$subject)
+#lda.test.acc
+
+#plot(model.lda)
+```
+
+
+
+
+```{r}
+##LOOCV for LDA
+set.seed(102)
+err.lda = rep(0, dim(known)[1])
+for (i in 1:(dim(known)[1])) {
+  lda.loocv = lda(subject ~ H.period + UD.period.t + H.t + UD.t.i + H.i + UD.i.e + H.e + UD.e.five + H.five + UD.five.Shift.r + H.Shift.r + UD.Shift.r.o + H.o + UD.o.a + H.a + UD.a.n + H.n + UD.n.l + H.l + UD.l.Return + H.Return, data = known[-i,])
+  lda.loocv.pred = predict(lda.loocv, known[i,])
+  if (lda.loocv.pred$class == known$subject[i]) 
+    err.lda[i] = 1
+}
+lda.loocv.ac<- sum(err.lda)/dim(known)[1]
+#lda.loocv.ac
+```
+
+
+```{r}
+##5 Fold cross validation method-lda
+set.seed(124)
+fold5<-createFolds(known$subject, k = 5, list = TRUE, returnTrain = FALSE)
+
+#checking data partition, all partition has equal proportion  of subjects
+
+#known[fold5[[1]],]$subject
+#known[fold5[[2]],]$subject
+#known[fold5[[3]],]$subject
+#known[fold5[[4]],]$subject
+#known[fold5[[5]],]$subject
+
+errs1 <- rep(0,5)
+for(i in 1:5)
+  {
+# lda logistics regression to training data.
+#lda.5fold <- lda(subject ~ H.period + H.t + H.i + H.e + H.five + H.Shift.r + H.o +H.a + H.n + H.l + H.Return, data = known[-fold5[[i]],]) 
+lda.5fold<-lda(subject ~ H.period + UD.period.t + H.t + UD.t.i + H.i + UD.i.e + H.e + UD.e.five + H.five + UD.five.Shift.r + H.Shift.r + UD.Shift.r.o + H.o + UD.o.a + H.a + UD.a.n + H.n + UD.n.l + H.l + UD.l.Return + H.Return,data = known[-fold5[[i]],])
+#Prediction 
+pred.lda.5fold <- predict(lda.5fold , newdata = known[fold5[[i]],])
+#Errors
+errs1[i] <- mean(pred.lda.5fold$class == known[fold5[[i]],]$subject)
+}
+#5 fold CV accuracy
+lda.fold.errr <- round(mean(errs1),6)
+#lda.fold.errr
+#0.806332 with H predictor only.
+
+```
+
+## LDA with PCA
+
+
+```{r,message=FALSE}
+library(caret)
+set.seed(123)
+known.pc<-read.csv("known.csv",header = TRUE)[,-c(1,3,4)]
+trainIndx<-createDataPartition(known.pc$subject,p=0.7,list=FALSE)
+train.p<-known.pc[trainIndx,]
+test.p<-known.pc[-trainIndx,]
+train.pca<-train.p[,-1]#c(1:3)]
+test.pca<-test.p[,-1]#:3)]
+#summary(train.p$subject)
+#summary(test.p$subject)
+
+
+```
+
+
+
+```{r}
+library(stats)
+library(MASS)
+prcom.known<-prcomp(train.pca,scale. = TRUE)
+#prcom.known$rotation
+#prcom.known$center
+#pairs(prcom.known$x[,1:2])
+#pca.known$x
+#biplot(prcom.known, scale = 0)
+#compute standard deviation of each principal component
+std_dev <- prcom.known$sdev
+#compute variance
+pr_var <- std_dev^2
+#check variance of first 10 components
+#pr_var[10:20]
+#screeplot(prcom.known, type="lines")
+#summary(prcom.known)
+#sum((prcom.known$sdev)^2) #31 because 31  scaled variables hase 1 sd each
+#proportion of variance explained
+prop_varex <- pr_var/sum(pr_var)
+#prop_varex[1:21]
+#scree plot
+# plot(prop_varex, xlab = "Principal Component",ylab = "Proportion of Variance Explained", type = "b")
+
+ #cumulative scree plot
+cumsum(prop_varex)
+plot(cumsum(prop_varex), xlab = "Principal Component",
+              ylab = "Cumulative Proportion of Variance Explained",
+              type = "b")
+```
+
+
+
+```{r}
+##Transforming data for lda
+#add a training set with principal components
+train.data <- data.frame(subject = train.p$subject, prcom.known$x)
+
+#we are interested in first 21 PCAs
+train.data <- train.data[,1:22]
+
+pca.lda <- lda(subject ~., train.data)
+#transform test into PCA
+test.data <- predict(prcom.known, newdata = test.pca)
+test.data <- as.data.frame(test.data)
+
+#select the first 21 components
+ test.data <- test.data[,1:21]
+#make prediction on train and  test data
+lda.prediction1 <- predict(pca.lda, train.data)
+lda.prediction <- predict(pca.lda, test.data)
+pca.lda1<- mean(lda.prediction1$class==train.p$subject)
+pca.lda2<- mean(lda.prediction$class==test.p$subject)
+
+
+```
+
+
+
+# Table 2:Accuracy Table for LDA Model
+
+Acuracy table shows that LDA predict  rate is good  with training data but there is less  
+variance for test data .Train and test accuracy rate are 90.46% and 87.16% for validation set approach.Loocv and 5 -fold model gave similar test errror as in VSA.I implented LDA-PCA  to reduce the dimension of the predictior space but it did not improve the test accuracy rate.
+subject wise accuracy  table and  plot are given below. Plot showes similar pattern for accuracy as in multinimial.
+
+
+```{r,echo=FALSE}
+library(knitr)
+Model <- c("LDA","LDA","LDA","LDA","LDA-PCA","LDA-PCA")
+Data <- c("Train","Test","LOOCV","5-FOLD","Train","Test")
+Accuracy <- c(lda.train.acc,lda.test.acc,
+lda.loocv.ac,lda.fold.errr,pca.lda1, pca.lda2)
+table.LDA <- as.data.frame(cbind(Model,Data,Accuracy))
+kable(table.LDA)
+```
+
+
+
+## Accuracy by subject  for LDA on test data
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+#table by subject 
+test.subject <- as.data.frame(table(test$subject))
+colnames(test.subject) <- c('subject','Actual')
+#get the data from confusion matrix
+a<-data.frame(diag(conf.table))
+b<-a$diag.conf.table.
+test.subject$Predicted<-b
+test.subject$Accuracy<-test.subject$Predicted/test.subject$Actual*100
+ndata<-test.subject
+#order the data
+table.lda.st <- ndata[order(ndata$Accuracy,decreasing=TRUE),] 
+#newdata
+Table12<-kable(table.lda.st, align="r",caption = "Table12:LDA")
+head(Table12,17)
+plot.lda<-ggplot(table.mlpc, aes(x=reorder(subject,Accuracy), y=Accuracy)) + geom_point(shape=21,colour=3)+
+  ggtitle("Plot of subject vs Accuracy for LDA ")+theme(axis.text.x  =  element_text(angle=45, vjust=0.5, size=6))
+plot.lda
+
+```
+
+
+
+# Random Forest:
+
+Random Forest build a number of decision trees on bootstraped training samples.When building 
+these trees,each time a split in a tree is considred , a random sample of m predictors is 
+choosen as split candidates from the full set of p predictors.The split is allowed to use only 
+one of those predictors.A fresh sample of m predictors is taken at each split.m=rootsquared p.
+Random Forest reduce the correlation betweeb trees.
+Here,I used randomForest funtion from R package to implement the random forest algorithm.I have
+use all predictors except rep and sessionIndex.
+
+
+
+```{r,warning=FALSE,message=FALSE}
+library(randomForest)
+set.seed(123)
+rf.model<-randomForest(subject~.,data = train.p,ntree=500, importance=TRUE)
+rf.pred.train<-predict(rf.model,newdata=train.p)
+rf.train.acc<-round(mean(rf.pred.train==train.p$subject),6)
+rf.train.acc
+#test error
+rf.pred.test<-predict(rf.model,newdata=test.p)
+rf.test.acc<-round(mean(rf.pred.test==test.p$subject),6)
+rf.test.acc
+conftable.rf <- cbind(table(rf.pred.test,test.p$subject))
+write.csv(conftable.rf,'Test Confusion matrix of rf.csv')
+
+```
+
+
+
+```{r}
+set.seed(124)
+#5 Fold approach
+known1<-known[,-c(2,3)]
+fold5<-createFolds(known1$subject, k = 5, list = TRUE, returnTrain = FALSE)
+
+#checking data partition, all partition has equal proportion  of subjects
+#known[fold5[[1]],]$subject
+#known[fold5[[2]],]$subject
+#known[fold5[[3]],]$subject
+#known[fold5[[4]],]$subject
+#known[fold5[[5]],]$subject
+
+errs11 <- rep(0,5)
+for(i in 1:5)
+  {
+#rf 5 fold
+rf.5fold<-randomForest(subject ~.,data = known1[-fold5[[i]],])
+#Prediction 
+pred.ef.5fold <- predict(rf.5fold , newdata = known1[fold5[[i]],])
+#Errors
+errs11[i] <- mean(pred.ef.5fold == known1[fold5[[i]],]$subject)
+}
+#5 fold CV accuracy
+rf.fold.errr <- round(mean(errs11),6)
+#rf.fold.errr
+
+```
+
+
+
+##loocv
+```{r}
+err12 = rep(0, dim(known1)[1])
+for (i in 1:(dim(known1)[1])) {
+  rf.loccv = randomForest(subject ~. , data = known1[-i,], mtry = 5,ntree = 500, imporatnce = TRUE)
+  pred.rf = predict(rf.loccv, newdata = known1[i,])
+  if (pred.rf != known1$subject[i]) 
+    err12[i] = 1
+}
+rf.loccv.err <- sum(err12)/dim(known1)[1]
+loocv.rf.acc <-round(( 1- rf.loccv.err),6)
+
+```
+
+
+
+
+
+
+# Accuracy Table for Random Forest
+
+
+The accuracy table for random forest is given bellow.Random forest provided 100% accuracy for 
+Training data and 95.30% for test accuracy in validation set approach.I used LOOCV  model to
+check if i can get more accuracy but it did not improve the accuracy.5-fold model imroved 
+accuracy very slightly.
+The subject wise accuracy table given below shows the % of acuracy for each subject.Accuracy 
+plots shows most of the subject were predicted with 100% accuracy.
+
+
+
+```{r,echo=FALSE}
+library(knitr)
+loocv.rf.acc<-0.95214
+Model <- c("Random Forest")
+Data <- c("Train","Test","Loocv","5-fold")
+Accuracy <- c(rf.train.acc,rf.test.acc, loocv.rf.acc, rf.fold.errr)
+table.rf <- as.data.frame(cbind(Model,Data,Accuracy))
+kable(table.rf)
+```
+
+
+
+
+## Acuracy of subject for Random Forest
+
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+#table by subject 
+test.subject <- as.data.frame(table(test.p$subject))
+colnames(test.subject) <- c('subject','Actual')
+#get the data from confusion matrix
+a<-data.frame(diag(conftable.rf))
+b<-a$diag.conftable.rf.
+test.subject$Predicted<-b
+test.subject$Accuracy<-test.subject$Predicted/test.subject$Actual*100
+ndata<-test.subject
+#order the data
+table.rf.st <- ndata[order(ndata$Accuracy,decreasing=TRUE),] 
+#newdata
+table13<-kable(table.rf.st, align="r",caption = "Table13:Random Forest")
+kable(head(table13,20))
+plot.lda<-ggplot(table.rf.st, aes(x=reorder(subject,Accuracy), y=Accuracy)) + geom_point(shape=21,colour=3)+
+  ggtitle("Plot of subject vs Accuracy for Random Forest ")+theme(axis.text.x  =  element_text(angle=45, vjust=0.5, size=6))
+plot.lda
+
+```
+
+
+
+
+# Conclusion:
+
+Among the models Random  forest provided good accuray for predicting subject, hence decided to use Random Forest to predict final unknown data session.The  accuracy rate for random forest 
+is 95.3033 %. The subjectwise accuracy was 100 % for most of the subject and most  of other subject 
+has accuracy rate above 80%
+Hence I decided to use Random forest to predict final data.
+
+
+## Appendix
+
+```{r Appendix, fig.width=10}
+Table11
+Table12
+table13
+###ps4
+#ps5
+#ps6
+#ps7
+#ps8
+```
+
+
+# Sources
+
+1:Correlations:
+https://cran.r-project.org/web/packages/ggcorrplot/ggcorrplot.pdf
+
+http://www.sthda.com/english/wiki/ggcorrplot-visualization-of-a-correlation-matrix-using-ggplot2
+
+http://www.dummies.com/education/math/statistics/how-to-interpret-a-correlation-coefficient-r/
+
+https://statistics.laerd.com/statistical-guides/pearson-correlation-coefficient-statistical-guid
+e.php
+
+2:Multinomial logistic regression
+
+https://en.wikipedia.org/wiki/Multinomial_logistic_regression#Linear_predictor
+
+https://www.analyticsvidhya.com/blog/2016/02/multinomial-ordinal-logistic-regression/
+
+3:creatpartition
+https://www.rdocumentation.org/packages/caret/versions/6.0-80/topics/createDataPartition
+
+https://arxiv.org/pdf/1204.1177.pdf
+4:LDA with PCA
+
+http://little-book-of-r-for-multivariate-analysis.readthedocs.io/en/latest/src/mul
+tivariateanalysis.html
+
+https://www.analyticsvidhya.com/blog/2016/03/practical-guide-principal-component-
+analysis-python/
+https://towardsdatascience.com/dimensionality-reduction-does-pca-really-improve-class
+ification-outcome-6e9ba21f0a32
+5:Frequency of subjects 
+https://stackoverflow.com/questions/26553526/how-to-add-frequency-count-labels-to
+-the-bars-in-a-bar-graph-using-ggplot2?utm_medium=organic&utm_source=google_rich_q
+a&utm_campaign=google_rich_qa
+6:box plot
+http://maths.nayland.school.nz/Year_11/AS1.10_Multivar_data/11_Comparing_Boxplots.htm
+http://www.sthda.com/english/wiki/ggplot2-box-plot-quick-start-guide-r-software-and-dat
+a-visualization
+7:Ridge plot 
+https://cran.r-project.org/web/packages/ggridges/vignettes/introduction.html
